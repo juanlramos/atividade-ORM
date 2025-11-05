@@ -1,117 +1,66 @@
-import os
-import sys
-from dotenv import load_dotenv
-from flask import Flask
-from flask_sqlalchemy import SQLAlchemy
-from sqlalchemy import Column, Integer, String, DateTime, ForeignKey
+from database import engine, SessionLocal
+from schema import Base
 
-load_dotenv()
+from crud_usuario import (
+    criar_usuario
+)
+from crud_artista import (
+    criar_artista
+)
+from crud_musica import (
+    criar_musica
+)
+from crud_playlist import (
+    criar_playlist, adicionar_musica_playlist, 
+    remover_musica_playlist, exibir_musicas_playlist
+)
 
-app = Flask(__name__)
-
-# Configuração do Banco
-DB_USER = os.environ.get('DB_USER')
-DB_PASS = os.environ.get('DB_PASS')
-DB_HOST = os.environ.get('DB_HOST')
-DB_NAME = os.environ.get('DB_NAME')
-app.config['SQLALCHEMY_DATABASE_URI'] = f'postgresql://{DB_USER}:{DB_PASS}@{DB_HOST}/{DB_NAME}'
-app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-
-db = SQLAlchemy(app)
-
-
-# Definição dos Modelos
-
-class Artista(db.Model):
-    __tablename__ = 'artista'
-
-    # Colunas
-    id = db.Column(db.Integer, primary_key=True)
-    nome = db.Column(db.String(255), nullable=False, unique=True)
-    nacionalidade = db.Column(db.String(100))
-
-    # Relacionamentos
-    musicas = db.relationship('Musica', back_populates='artista')
-
-
-class Usuario(db.Model):
-    __tablename__ = 'usuario'
-
-    id = db.Column(db.Integer, primary_key=True)
-    username = db.Column(db.String(100), nullable=False, unique=True)
-    email = db.Column(db.String(255), nullable=False, unique=True)
-
-    playlists = db.relationship('Playlist', 
-                                back_populates='usuario', 
-                                cascade='all, delete-orphan')
-
-class Musica(db.Model):
-    __tablename__ = 'musica'
-
-    id = db.Column(db.Integer, primary_key=True)
-    titulo = db.Column(db.String(255), nullable=False)
-    duracao_segundos = db.Column(db.Integer, nullable=False)
+def main_demo():
     
-    artista_id = db.Column(db.Integer, 
-                           db.ForeignKey('artista.id', ondelete='RESTRICT'), 
-                           nullable=False)
+    # Para testes
+    Base.metadata.drop_all(bind=engine)
+    Base.metadata.create_all(bind=engine)
     
-    __table_args__ = (
-        db.CheckConstraint('duracao_segundos > 0', name='check_duracao_positiva'),
-    )
+    with SessionLocal() as session:
+        
+        pablo = criar_usuario(session, "Pablo", "pablo@aluno.com")
+        josue = criar_usuario(session, "Josué", "josue@aluno.com")
+        alexandre = criar_usuario(session, "Alexandre", "alexandre@aluno.com")
 
-    artista = db.relationship('Artista', back_populates='musicas')
-    
-    playlists_association = db.relationship('MusicaPlaylist',
-                                            back_populates='musica',
-                                            cascade='all, delete-orphan')
+        queen = criar_artista(session, "Queen", "Britânica")
+        led_zeppelin = criar_artista(session, "Led Zeppelin", "Britânica") 
+        ac_dc = criar_artista(session, "AC/DC", "Australiana")
+        x = criar_artista(session, "Banda X (Pop)", "Brasileira")
+
+        bohemian_rhapsody = criar_musica(session, "Bohemian Rhapsody", 354, queen.id)
+        stairway_to_heaven = criar_musica(session, "Stairway To Heaven", 482, led_zeppelin.id)
+        back_in_black = criar_musica(session, "Back In Black", 255, ac_dc.id)
+        we_will_rock_you = criar_musica(session, "We Will Rock You", 160, queen.id)
+        pop_brasileira = criar_musica(session, "Música Pop Brasileira", 180, x.id)
+        thunderstruck = criar_musica(session, "Thunderstruck", 292, ac_dc.id)
+
+        rock_pablo = criar_playlist(session, "Rock do Pablo", pablo.id)
+        baladas_josue = criar_playlist(session, "Baladas do Josué", josue.id)
+        heavy_riffs = criar_playlist(session, "Heavy Riffs", pablo.id)
+
+        if rock_pablo:
+            adicionar_musica_playlist(session, bohemian_rhapsody.id, rock_pablo, ordem=1)
+            adicionar_musica_playlist(session, back_in_black.id, rock_pablo, ordem=2)
+            adicionar_musica_playlist(session, we_will_rock_you.id, rock_pablo, ordem=3)
+            # remover_musica_playlist(session, back_in_black.id, rock_pablo)
+            exibir_musicas_playlist(session, rock_pablo)
+
+        if baladas_josue:
+            adicionar_musica_playlist(session, stairway_to_heaven.id, baladas_josue, ordem=1)
+            exibir_musicas_playlist(session, baladas_josue)
+
+        if heavy_riffs:
+            adicionar_musica_playlist(session, back_in_black.id, heavy_riffs, ordem=1)
+            adicionar_musica_playlist(session, thunderstruck.id, heavy_riffs, ordem=2)
+            exibir_musicas_playlist(session, heavy_riffs)
 
 
-class Playlist(db.Model):
-    __tablename__ = 'playlist'
 
-    playlist_id = db.Column(db.Integer, primary_key=True, autoincrement=True)
-    usuario_id = db.Column(db.Integer, 
-                           db.ForeignKey('usuario.id', ondelete='CASCADE'), 
-                           primary_key=True, 
-                           nullable=False)
-    
-    nome = db.Column(db.String(255), nullable=False)
-    
-    data_criacao = db.Column(db.DateTime, 
-                             server_default=db.func.current_timestamp())
-    
-    usuario = db.relationship('Usuario', back_populates='playlists')
-    
-    # --- AQUI ESTAVA O ERRO (AGORA CORRIGIDO) ---
-    # Apontava para 'Playlist', agora aponta para 'MusicaPlaylist'
-    musicas_association = db.relationship('MusicaPlaylist',
-                                          back_populates='playlist',
-                                          cascade='all, delete-orphan')
+if __name__ == "__main__":
+    main_demo()
 
-
-
-class MusicaPlaylist(db.Model):
-    __tablename__ = 'musica_playlist'
-
-    musica_id = db.Column(db.Integer, 
-                          db.ForeignKey('musica.id', ondelete='CASCADE'), 
-                          primary_key=True)
-    
-    playlist_id = db.Column(db.Integer, primary_key=True)
-    usuario_id = db.Column(db.Integer, primary_key=True)
-    ordem_na_playlist = db.Column(db.Integer, nullable=False)
-
-    __table_args__ = (
-        db.ForeignKeyConstraint(
-            ['playlist_id', 'usuario_id'], 
-            ['playlist.playlist_id', 'playlist.usuario_id'], 
-            ondelete='CASCADE',
-            name='fk_playlist_composta'
-        ),
-        db.UniqueConstraint('playlist_id', 'usuario_id', 'ordem_na_playlist', 
-                            name='uq_playlist_ordem')
-    )
-
-    musica = db.relationship('Musica', back_populates='playlists_association')
-    playlist = db.relationship('Playlist', back_populates='musicas_association')
