@@ -2,6 +2,7 @@ from database import SessionLocal
 from schema import Artista, Musica, MusicaPlaylist, Playlist, Usuario
 from sqlalchemy import select, func, desc
 import pandas as pd
+import sys
 
 session = SessionLocal()
 
@@ -73,7 +74,58 @@ def query4():
 
     return query_result
 
-result = query3()
+if __name__ == "__main__":
+    # Verifica se foi passado pelo menos um argumento, se não, exibe instruções de uso
+    if len(sys.argv) < 2:
+        print("Erro: Informe o número da query")
+        print("Exemplo: python queries.py 3")
+        sys.exit(1)
 
-df = pd.DataFrame(result, columns=["Nome", "total_musicas"])
-print(df)
+    escolha = sys.argv[1] # Pega o primeiro argumento após o nome do arquivo
+
+    result = []
+    colunas = []
+
+    try:
+        if escolha == "1":
+            # Query 1 precisa de 1 argumento extra: username
+            if len(sys.argv) < 3:
+                print("Erro: Query 1 precisa do username. Ex: python queries.py 1 'Pablo'")
+            else:
+                username = sys.argv[2]
+                result = query1(username)
+                colunas = ["Nome Playlist", "Data Criação"]
+
+        elif escolha == "2":
+            # Query 2 precisa de 2 argumentos extras: username e artista
+            if len(sys.argv) < 4:
+                print("Erro: Query 2 precisa de user e artista. Ex: python queries.py 2 'Josue' 'Queen'")
+            else:
+                username = sys.argv[2]
+                nome_artista = sys.argv[3]
+                result = query2(username, nome_artista)
+                colunas = ["Objeto Musica"] 
+
+        elif escolha == "3":
+            result = query3()
+            colunas = ["Nome Playlist", "Total Musicas"]
+
+        elif escolha == "4":
+            result = query4()
+            colunas = ["Objeto Artista"]
+        
+        else:
+            print("Opção inválida!")
+            sys.exit(1)
+
+        # Exibição do Resultado
+        if result:
+            df = pd.DataFrame(result)
+            if len(df.columns) == len(colunas):
+                df.columns = colunas
+            print(df)
+        else:
+            print("Nenhum resultado encontrado para esta consulta.")
+
+    except Exception as e:
+        print(f"Ocorreu um erro ao executar a query: {e}")
