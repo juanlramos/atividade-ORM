@@ -28,10 +28,10 @@ def query1(username: str):
 def query2(username: str, nome_artista: str):
     query = (
         select(Musica.id, Musica.titulo, Musica.duracao_segundos, Musica.artista_id)
-        .join(Musica.artista)
-        .join(Musica.playlists_associadas)
-        .join(MusicaPlaylist.playlist)
-        .join(Playlist.usuario)
+        .join(Artista, Musica.artista_id == Artista.id)
+        .join(MusicaPlaylist, Musica.id == MusicaPlaylist.musica_id)
+        .join(Playlist, MusicaPlaylist.playlist_id == Playlist.playlist_id)
+        .join(Usuario, Playlist.usuario_id == Usuario.id)
         .where(Usuario.username == username)
         .where(Artista.nome == nome_artista)
     )
@@ -49,7 +49,7 @@ def query3():
             Playlist.nome, 
             func.count(MusicaPlaylist.musica_id).label('total_musicas')
         )
-        .outerjoin(Playlist.musicas_associadas)
+        .outerjoin(MusicaPlaylist, Playlist.playlist_id == MusicaPlaylist.playlist_id)
         .group_by(Playlist.playlist_id, Playlist.usuario_id, Playlist.nome)
         .order_by(desc('total_musicas'))
     )
@@ -185,8 +185,8 @@ def query10():
             Artista.nome,
             func.count(func.distinct(MusicaPlaylist.playlist_id)).label('total_playlists')
         )
-        .outerjoin(Artista.musicas)
-        .outerjoin(Musica.playlists_associadas)
+        .outerjoin(Musica, Artista.id == Musica.artista_id)
+        .outerjoin(MusicaPlaylist, Musica.id == MusicaPlaylist.musica_id)
         .group_by(Artista.id, Artista.nome)
         .order_by(desc('total_playlists'))
     )
@@ -201,11 +201,11 @@ def query10():
 def query11():
     query = (
         select(Musica.titulo, Musica.duracao_segundos)
-        .join(Artista)
+        .join(Artista, Musica.artista_id == Artista.id)
         .where(Artista.nome == 'Led Zeppelin')
         .where(Musica.duracao_segundos > 
                 select(func.max(Musica.duracao_segundos))
-                .join(Artista)
+                .join(Artista, Musica.artista_id == Artista.id)
                 .where(Artista.nome == 'Queen')
                 .scalar_subquery())
     )
