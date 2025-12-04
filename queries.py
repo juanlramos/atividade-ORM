@@ -224,7 +224,7 @@ def query12(usuario_id: int, id_playlist_origem: int,  id_playlist_destino: int,
                 Playlist.playlist_id.in_([id_playlist_origem, id_playlist_destino]),
                 Playlist.usuario_id == usuario_id
             )
-            ).scalars().all()
+            ).all()
         
         if len(playlists_encontradas) != 2:
             print("ERRO: Uma ou ambas as playlists não foram encontradas ou não pertencem ao usuário.")
