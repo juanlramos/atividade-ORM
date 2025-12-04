@@ -1,66 +1,74 @@
 from database import engine, SessionLocal
-from schema import Base
-
-from crud_usuario import (
-    criar_usuario
-)
-from crud_artista import (
-    criar_artista
-)
-from crud_musica import (
-    criar_musica
-)
-from crud_playlist import (
-    criar_playlist, adicionar_musica_playlist, 
-    remover_musica_playlist, exibir_musicas_playlist
-)
+from schema import Base, Usuario, Artista, Musica, Playlist, MusicaPlaylist
 
 def main_demo():
-    
-    # Para testes
+
     Base.metadata.drop_all(bind=engine)
     Base.metadata.create_all(bind=engine)
-    
+
     with SessionLocal() as session:
-        
-        pablo = criar_usuario(session, "Pablo", "pablo@aluno.com")
-        josue = criar_usuario(session, "Josué", "josue@aluno.com")
-        alexandre = criar_usuario(session, "Alexandre", "alexandre@aluno.com")
 
-        queen = criar_artista(session, "Queen", "Britânica")
-        led_zeppelin = criar_artista(session, "Led Zeppelin", "Britânica") 
-        ac_dc = criar_artista(session, "AC/DC", "Australiana")
-        x = criar_artista(session, "Banda X (Pop)", "Brasileira")
+        pablo = Usuario(username="Pablo", email="pablo@aluno.com")
+        josue = Usuario(username="Josué", email="josue@aluno.com")
+        alexandre = Usuario(username="Alexandre", email="alexandre@aluno.com")
 
-        bohemian_rhapsody = criar_musica(session, "Bohemian Rhapsody", 354, queen.id)
-        stairway_to_heaven = criar_musica(session, "Stairway To Heaven", 482, led_zeppelin.id)
-        back_in_black = criar_musica(session, "Back In Black", 255, ac_dc.id)
-        we_will_rock_you = criar_musica(session, "We Will Rock You", 160, queen.id)
-        pop_brasileira = criar_musica(session, "Música Pop Brasileira", 180, x.id)
-        thunderstruck = criar_musica(session, "Thunderstruck", 292, ac_dc.id)
+        session.add_all([pablo, josue, alexandre])
+        session.flush()
 
-        rock_pablo = criar_playlist(session, "Rock do Pablo", pablo.id)
-        baladas_josue = criar_playlist(session, "Baladas do Josué", josue.id)
-        heavy_riffs = criar_playlist(session, "Heavy Riffs", pablo.id)
+        queen = Artista(nome="Queen", nacionalidade="Britânica")
+        led_zeppelin = Artista(nome="Led Zeppelin", nacionalidade="Britânica")
+        ac_dc = Artista(nome="AC/DC", nacionalidade="Australiana")
+        x = Artista(nome="Banda X (Pop)", nacionalidade="Brasileira")
+
+        session.add_all([queen, led_zeppelin, ac_dc, x])
+        session.flush()
+
+        bohemian_rhapsody = Musica(titulo="Bohemian Rhapsody", duracao_segundos=354, artista_id=queen.id)
+        stairway_to_heaven = Musica(titulo="Stairway To Heaven", duracao_segundos=482, artista_id=led_zeppelin.id)
+        back_in_black = Musica(titulo="Back In Black", duracao_segundos=255, artista_id=ac_dc.id)
+        we_will_rock_you = Musica(titulo="We Will Rock You", duracao_segundos=160, artista_id=queen.id)
+        pop_brasileira = Musica(titulo="Música Pop Brasileira", duracao_segundos=180, artista_id=x.id)
+        thunderstruck = Musica(titulo="Thunderstruck", duracao_segundos=292, artista_id=ac_dc.id)
+
+        session.add_all([
+            bohemian_rhapsody, stairway_to_heaven,
+            back_in_black, we_will_rock_you,
+            pop_brasileira, thunderstruck
+        ])
+        session.flush()
+
+        rock_pablo = Playlist(nome="Rock do Pablo", usuario_id=pablo.id)
+        baladas_josue = Playlist(nome="Baladas do Josué", usuario_id=josue.id)
+        heavy_riffs = Playlist(nome="Heavy Riffs", usuario_id=pablo.id)
+
+        session.add_all([rock_pablo, baladas_josue, heavy_riffs])
+        session.flush()
 
         if rock_pablo:
-            adicionar_musica_playlist(session, bohemian_rhapsody.id, rock_pablo, ordem=1)
-            adicionar_musica_playlist(session, back_in_black.id, rock_pablo, ordem=2)
-            adicionar_musica_playlist(session, we_will_rock_you.id, rock_pablo, ordem=3)
-            # remover_musica_playlist(session, back_in_black.id, rock_pablo)
-            exibir_musicas_playlist(session, rock_pablo)
+            rock_pablo.musicas_associadas.append(
+                MusicaPlaylist(musica_id=bohemian_rhapsody.id, usuario_id=pablo.id, ordem_na_playlist=1)
+            )
+            rock_pablo.musicas_associadas.append(
+                MusicaPlaylist(musica_id=back_in_black.id, usuario_id=pablo.id, ordem_na_playlist=2)
+            )
+            rock_pablo.musicas_associadas.append(
+                MusicaPlaylist(musica_id=we_will_rock_you.id, usuario_id=pablo.id, ordem_na_playlist=3)
+            )
 
         if baladas_josue:
-            adicionar_musica_playlist(session, stairway_to_heaven.id, baladas_josue, ordem=1)
-            exibir_musicas_playlist(session, baladas_josue)
+            baladas_josue.musicas_associadas.append(
+                MusicaPlaylist(musica_id=stairway_to_heaven.id, usuario_id=josue.id, ordem_na_playlist=1)
+            )
 
         if heavy_riffs:
-            adicionar_musica_playlist(session, back_in_black.id, heavy_riffs, ordem=1)
-            adicionar_musica_playlist(session, thunderstruck.id, heavy_riffs, ordem=2)
-            exibir_musicas_playlist(session, heavy_riffs)
+            heavy_riffs.musicas_associadas.append(
+                MusicaPlaylist(musica_id=back_in_black.id, usuario_id=pablo.id, ordem_na_playlist=1)
+            )
+            heavy_riffs.musicas_associadas.append(
+                MusicaPlaylist(musica_id=thunderstruck.id, usuario_id=pablo.id, ordem_na_playlist=2)
+            )
 
-
+        session.commit()
 
 if __name__ == "__main__":
     main_demo()
-
